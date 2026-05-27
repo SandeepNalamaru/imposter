@@ -129,7 +129,3 @@ export function getPairById(id: string): WordPair | undefined {
   return ALL_PAIRS.find((p) => p.id === id);
 }
 
-// TEMP — remove once all screens are migrated in Phase 2.
-export const FAKE_PLAYERS = ["Alex", "Sam", "Jordan", "Riley", "Taylor"];
-export const FAKE_WORD = "eagle";
-export const FAKE_PAIR = { civilianWord: "eagle", imposterWord: "pigeon" };

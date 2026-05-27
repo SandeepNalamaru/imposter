@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
+import SettingsGear from "../components/SettingsGear";
+import SettingsModal from "../components/SettingsModal";
 
 export default function Kick() {
   const navigate = useNavigate();
@@ -9,18 +11,14 @@ export default function Kick() {
   const kickPlayer = useGameStore((s) => s.kickPlayer);
   const setCurrentRoute = useGameStore((s) => s.setCurrentRoute);
 
-  // Local UI state: which player is the user currently confirming a kick on?
-  // Stored as ID, not name, so duplicate-handling is impossible-by-design
-  // (also, the spec disallows duplicate names anyway).
   const [pendingKickId, setPendingKickId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Update resume snapshot route on mount.
   useEffect(() => {
     setCurrentRoute("/kick");
   }, [setCurrentRoute]);
 
   // Defensive: refresh-mid-game lands here with no state, bail to Home.
-  // Phase 3 resume modal will intercept this case earlier.
   useEffect(() => {
     if (players.length === 0 || (phase !== "kick" && phase !== "won")) {
       navigate("/", { replace: true });
@@ -29,11 +27,7 @@ export default function Kick() {
 
   if (players.length === 0) return null;
 
-  // Remaining players, in reveal/entry order. Kicked players are removed
-  // from the list entirely per spec §5 — "not grayed out or struck through."
   const remaining = players.filter((p) => !p.isKicked);
-
-  // Find the pending player's display name (the dialog needs it).
   const pendingPlayer = pendingKickId
     ? players.find((p) => p.id === pendingKickId)
     : null;
@@ -43,17 +37,18 @@ export default function Kick() {
     const winner = kickPlayer(pendingKickId);
     setPendingKickId(null);
     if (winner) {
-      // Game ended. kickPlayer already cleared gameInProgress and set
-      // phase to "won". Navigate to Win.
       navigate("/win");
     }
-    // If no winner, stay on Kick — the next render will show remaining
-    // players minus the one we just kicked.
   };
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Tap to kick</h1>
+      <div className="flex items-center mb-2">
+        <h1 className="text-2xl font-bold">Tap to kick</h1>
+        <div className="ml-auto">
+          <SettingsGear onClick={() => setSettingsOpen(true)} />
+        </div>
+      </div>
       <p className="text-sm text-gray-500 mb-6">
         {remaining.length} players remaining.
       </p>
@@ -70,13 +65,9 @@ export default function Kick() {
         ))}
       </div>
 
-      {/* Confirmation dialog. Buttons are flipped from the original tap
-          location: tap was somewhere in the player list; dialog buttons
-          are at the bottom of the screen. Spec §13.6: "Confirm is not
-          under the original tap location." */}
       {pendingPlayer && (
         <div
-          className="fixed inset-0 flex items-end justify-center bg-black/40 sm:items-center"
+          className="fixed inset-0 flex items-end justify-center bg-black/40 sm:items-center z-50"
           onClick={() => setPendingKickId(null)}
         >
           <div
@@ -103,6 +94,12 @@ export default function Kick() {
           </div>
         </div>
       )}
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        showRestart={true}
+      />
     </div>
   );
 }

@@ -1,9 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
-import type { CategoryName, CategorySelection } from "../types";
+import SettingsGear from "../components/SettingsGear";
+import type { CategorySelection } from "../types";
 
-// Category list rendered on Home. Spicy and Random are visually differentiated.
-// "Random" is not a stored category — it's a runtime selector.
 interface CategoryCard {
   key: CategorySelection;
   label: string;
@@ -25,12 +24,6 @@ export default function Home() {
   const setCategory = useGameStore((s) => s.setCategory);
   const resetGame = useGameStore((s) => s.resetGame);
 
-  // Defensive: if user lands on Home with stale game state, clear it.
-  // This is the "Done" path and also catches edge cases where navigation
-  // bypassed Win. Phase 3 will add the "Resume game?" prompt that runs
-  // BEFORE this clear, so resume still wins when there's a real game.
-  // For now, a fresh Home = a fresh game.
-
   const handlePick = (key: CategorySelection) => {
     resetGame();
     setCategory(key);
@@ -39,7 +32,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center">Imposter</h1>
+      <div className="flex items-center mb-6">
+        <h1 className="text-2xl font-bold">Imposter</h1>
+        <div className="ml-auto">
+          <SettingsGear onClick={() => navigate("/settings")} />
+        </div>
+      </div>
 
       <div className="flex flex-col gap-3">
         {CATEGORY_CARDS.map((card) => (

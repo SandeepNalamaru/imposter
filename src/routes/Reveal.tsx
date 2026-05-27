@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useSettingsStore } from "../store/settingsStore";
+import SettingsGear from "../components/SettingsGear";
+import SettingsModal from "../components/SettingsModal";
 
 type RevealState = "pre" | "revealed" | "hidden";
 
@@ -10,8 +12,6 @@ export default function Reveal() {
   const { playerIndex } = useParams<{ playerIndex: string }>();
   const idx = Number(playerIndex);
 
-  // Pull from store. Selecting individually is fine here — the values are
-  // stable for the duration of one reveal screen.
   const pair = useGameStore((s) => s.pair);
   const players = useGameStore((s) => s.players);
   const playerOrder = useGameStore((s) => s.playerOrder);
@@ -23,35 +23,29 @@ export default function Reveal() {
     (s) => s.toggleImpostersKnowEachOther,
   );
 
-  // Three-state local machine.
-  //
-  // IMPORTANT: useState("pre") only runs on the FIRST mount of the component
-  // instance. React Router reuses the same component instance when only the
-  // route param changes (e.g. /reveal/0 → /reveal/1), so without an explicit
-  // reset, state carries over from the previous player — meaning players 2+
-  // would arrive on the screen still showing "Pass to [next]" from player 1's
-  // hidden state. The reset effect below forces "pre" on every idx change.
+  // Three-state local machine. Reset effect needed because React Router
+  // reuses the component instance when only the route param changes.
   const [state, setState] = useState<RevealState>("pre");
 
   useEffect(() => {
     setState("pre");
   }, [idx]);
 
-  // Update the resume snapshot route on mount.
+  // Settings modal open/close state.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   useEffect(() => {
     setCurrentRoute(`/reveal/${idx}`);
   }, [idx, setCurrentRoute]);
 
-  // Defensive: only bail when there's literally no game. We must NOT bail
-  // when phase has legitimately moved past "reveal" (e.g. startKickPhase
-  // just fired) — that would clobber the kick navigation.
+  // Only bail when there's literally no game. Not when phase has legitimately
+  // moved past "reveal" (e.g. startKickPhase just fired).
   useEffect(() => {
     if (!pair || players.length === 0 || phase === null) {
       navigate("/", { replace: true });
     }
   }, [pair, players.length, phase, navigate]);
 
-  // Defensive: invalid playerIndex.
   useEffect(() => {
     if (!Number.isInteger(idx) || idx < 0 || idx >= playerOrder.length) {
       if (playerOrder.length > 0) navigate("/reveal/0", { replace: true });
@@ -114,8 +108,13 @@ export default function Reveal() {
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
-      <div className="flex justify-end text-sm text-gray-500 mb-8">
-        Player {idx + 1} of {playerOrder.length}
+      <div className="flex items-center mb-8">
+        <span className="text-sm text-gray-500">
+          Player {idx + 1} of {playerOrder.length}
+        </span>
+        <div className="ml-auto">
+          <SettingsGear onClick={() => setSettingsOpen(true)} />
+        </div>
       </div>
 
       <div
@@ -173,6 +172,12 @@ export default function Reveal() {
           {isLast ? "Start voting" : "Next"}
         </button>
       )}
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        showRestart={true}
+      />
     </div>
   );
 }
