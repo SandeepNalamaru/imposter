@@ -1,84 +1,178 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { FAKE_PLAYERS, FAKE_WORD } from '../data/wordPairs'
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useGameStore } from "../store/gameStore";
+import { useSettingsStore } from "../store/settingsStore";
 
-type RevealState = 'pre' | 'shown' | 'hidden'
+type RevealState = "pre" | "revealed" | "hidden";
 
 export default function Reveal() {
-  const { playerIndex } = useParams()
-  const navigate = useNavigate()
-  const [state, setState] = useState<RevealState>('pre')
+  const navigate = useNavigate();
+  const { playerIndex } = useParams<{ playerIndex: string }>();
+  const idx = Number(playerIndex);
 
-  const idx = Number(playerIndex ?? 0)
-  const playerName = FAKE_PLAYERS[idx] ?? 'Unknown'
-  const isLast = idx === FAKE_PLAYERS.length - 1
+  // Pull from store. Selecting individually is fine here — the values are
+  // stable for the duration of one reveal screen.
+  const pair = useGameStore((s) => s.pair);
+  const players = useGameStore((s) => s.players);
+  const playerOrder = useGameStore((s) => s.playerOrder);
+  const phase = useGameStore((s) => s.phase);
+  const advanceReveal = useGameStore((s) => s.advanceReveal);
+  const startKickPhase = useGameStore((s) => s.startKickPhase);
+  const setCurrentRoute = useGameStore((s) => s.setCurrentRoute);
+  const impostersKnowEachOther = useSettingsStore(
+    (s) => s.toggleImpostersKnowEachOther,
+  );
 
-  function handleBodyTap() {
-    if (state === 'pre') setState('shown')
-    else if (state === 'shown') setState('hidden')
-  }
+  // Three-state local machine.
+  //
+  // IMPORTANT: useState("pre") only runs on the FIRST mount of the component
+  // instance. React Router reuses the same component instance when only the
+  // route param changes (e.g. /reveal/0 → /reveal/1), so without an explicit
+  // reset, state carries over from the previous player — meaning players 2+
+  // would arrive on the screen still showing "Pass to [next]" from player 1's
+  // hidden state. The reset effect below forces "pre" on every idx change.
+  const [state, setState] = useState<RevealState>("pre");
 
-  function handleNext() {
-    if (isLast) {
-      navigate('/kick')
-    } else {
-      navigate(`/reveal/${idx + 1}`)
-      // Note: setState here would race; the route change unmounts and remounts
-      // with a fresh 'pre' state, which is what we want.
+  useEffect(() => {
+    setState("pre");
+  }, [idx]);
+
+  // Update the resume snapshot route on mount.
+  useEffect(() => {
+    setCurrentRoute(`/reveal/${idx}`);
+  }, [idx, setCurrentRoute]);
+
+  // Defensive: only bail when there's literally no game. We must NOT bail
+  // when phase has legitimately moved past "reveal" (e.g. startKickPhase
+  // just fired) — that would clobber the kick navigation.
+  useEffect(() => {
+    if (!pair || players.length === 0 || phase === null) {
+      navigate("/", { replace: true });
     }
-  }
+  }, [pair, players.length, phase, navigate]);
+
+  // Defensive: invalid playerIndex.
+  useEffect(() => {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= playerOrder.length) {
+      if (playerOrder.length > 0) navigate("/reveal/0", { replace: true });
+    }
+  }, [idx, playerOrder.length, navigate]);
+
+  // visibilitychange: snap to Hidden if page goes hidden while Revealed.
+  useEffect(() => {
+    if (state !== "revealed") return;
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setState("hidden");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [state]);
+
+  if (!pair || players.length === 0 || phase !== "reveal") return null;
+  if (idx < 0 || idx >= playerOrder.length) return null;
+
+  const currentPlayerId = playerOrder[idx];
+  const currentPlayer = players.find((p) => p.id === currentPlayerId);
+  if (!currentPlayer) return null;
+
+  const isLast = idx === playerOrder.length - 1;
+  const nextPlayer = !isLast
+    ? players.find((p) => p.id === playerOrder[idx + 1])
+    : null;
+
+  const word = currentPlayer.isImposter ? pair.imposterWord : pair.civilianWord;
+
+  const allImposters = players.filter((p) => p.isImposter);
+  const showOtherImposters =
+    impostersKnowEachOther &&
+    currentPlayer.isImposter &&
+    allImposters.length >= 2;
+  const otherImposterNames = allImposters
+    .filter((p) => p.id !== currentPlayer.id)
+    .map((p) => p.name)
+    .join(", ");
+
+  const handleTapBody = () => {
+    if (state === "pre") setState("revealed");
+    else if (state === "revealed") setState("hidden");
+  };
+
+  const handleNext = () => {
+    if (isLast) {
+      startKickPhase();
+      navigate("/kick");
+    } else {
+      advanceReveal();
+      navigate(`/reveal/${idx + 1}`);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
+      <div className="flex justify-end text-sm text-gray-500 mb-8">
+        Player {idx + 1} of {playerOrder.length}
+      </div>
+
       <div
-        className="flex flex-1 cursor-pointer items-center justify-center px-6"
-        onClick={state !== 'hidden' ? handleBodyTap : undefined}
+        onClick={state !== "hidden" ? handleTapBody : undefined}
+        className="flex-1 flex flex-col items-center justify-center text-center"
+        style={{ cursor: state !== "hidden" ? "pointer" : "default" }}
       >
-        {state === 'pre' && (
-          <div className="text-center">
-            <div className="mb-4 text-sm font-medium uppercase tracking-wide text-slate-400">
-              Player {idx + 1} of {FAKE_PLAYERS.length}
-            </div>
-            <div className="text-3xl font-semibold text-slate-900">{playerName},</div>
-            <div className="mt-2 text-xl text-slate-600">tap to reveal your word.</div>
+        {state === "pre" && (
+          <div className="px-6">
+            <p className="text-2xl">
+              <span className="font-bold">{currentPlayer.name}</span>,
+              <br />
+              tap to reveal your word.
+            </p>
           </div>
         )}
 
-        {state === 'shown' && (
-          <div className="text-center">
-            <div className="text-6xl font-bold text-slate-900">{FAKE_WORD}</div>
-            <div className="mt-8 text-sm text-slate-400">Tap to hide.</div>
+        {state === "revealed" && (
+          <div className="px-6">
+            <p className="text-5xl font-bold mb-6 break-words">{word}</p>
+
+            {showOtherImposters && (
+              <p className="text-sm text-gray-500 mt-4">
+                Other imposters: {otherImposterNames}
+              </p>
+            )}
+
+            <p className="text-gray-400 text-sm mt-8">Tap to hide</p>
           </div>
         )}
 
-        {state === 'hidden' && (
-          <div className="text-center">
+        {state === "hidden" && (
+          <div className="px-6">
             {isLast ? (
-              <>
-                <div className="text-2xl font-semibold text-slate-900">
-                  All players have seen their word.
-                </div>
-                <div className="mt-2 text-lg text-slate-600">Start discussion.</div>
-              </>
+              <p className="text-xl">
+                All players have seen their word.
+                <br />
+                Start discussion.
+              </p>
             ) : (
-              <div className="text-2xl font-semibold text-slate-900">
-                Pass to {FAKE_PLAYERS[idx + 1]}.
-              </div>
+              <p className="text-xl">
+                Pass to{" "}
+                <span className="font-bold">{nextPlayer?.name ?? "next"}</span>.
+              </p>
             )}
           </div>
         )}
       </div>
 
-      {state === 'hidden' && (
-        <div className="px-4 pb-8">
-          <button
-            onClick={handleNext}
-            className="block w-full rounded-2xl bg-slate-900 px-6 py-4 text-center text-lg font-semibold text-white active:scale-[0.98]"
-          >
-            {isLast ? 'Start voting' : 'Next'}
-          </button>
-        </div>
+      {state === "hidden" && (
+        <button
+          onClick={handleNext}
+          className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+        >
+          {isLast ? "Start voting" : "Next"}
+        </button>
       )}
     </div>
-  )
+  );
 }
