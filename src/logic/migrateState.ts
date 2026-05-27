@@ -28,16 +28,13 @@ export function migrateState(
   const version: number =
     typeof state.schemaVersion === "number" ? state.schemaVersion : 0;
 
-  switch (version) {
+switch (version) {
     case 0:
       state = { ...state, schemaVersion: 1 };
-    // falls through
+      return migrateState(state);
     case 1:
-      // current; nothing to do
       break;
     default:
-      // Newer-than-current version. Could happen if a user downgrades.
-      // Safest move: reject and let the app start fresh.
       return null;
   }
 
