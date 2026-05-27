@@ -40,7 +40,9 @@ interface GameStoreActions {
   startGame: (imposterCount: number) => void;
 
   // Reveal phase
+
   advanceReveal: () => void;            // bump currentRevealIndex
+  retreatReveal: () => void;            // decrement currentRevealIndex (cross-player Back)
   startKickPhase: () => void;           // phase: reveal → kick
 
   // Kick phase. Returns the winner if the kick ended the game, else null.
@@ -129,6 +131,16 @@ export const useGameStore = create<GameStoreState & GameStoreActions>()(
 
     advanceReveal: () => {
       set((s) => ({ currentRevealIndex: s.currentRevealIndex + 1 }));
+      snapshotToSettings(get());
+    },
+
+    retreatReveal: () => {
+      // Guard against going below 0. The Reveal component already gates
+      // the Back button on Player 1's Pre-reveal so this should be
+      // unreachable, but belt-and-suspenders here keeps the store sane.
+      set((s) => ({
+        currentRevealIndex: Math.max(0, s.currentRevealIndex - 1),
+      }));
       snapshotToSettings(get());
     },
 

@@ -17,6 +17,7 @@ export default function Reveal() {
   const playerOrder = useGameStore((s) => s.playerOrder);
   const phase = useGameStore((s) => s.phase);
   const advanceReveal = useGameStore((s) => s.advanceReveal);
+  const retreatReveal = useGameStore((s) => s.retreatReveal);
   const startKickPhase = useGameStore((s) => s.startKickPhase);
   const setCurrentRoute = useGameStore((s) => s.setCurrentRoute);
   const impostersKnowEachOther = useSettingsStore(
@@ -75,6 +76,7 @@ export default function Reveal() {
   if (!currentPlayer) return null;
 
   const isLast = idx === playerOrder.length - 1;
+  const isFirst = idx === 0;
   const nextPlayer = !isLast
     ? players.find((p) => p.id === playerOrder[idx + 1])
     : null;
@@ -106,12 +108,48 @@ export default function Reveal() {
     }
   };
 
+  // Back behavior, trust-based per Conv 7 design call:
+  //  - From Hidden: stay on same player, return to Pre-reveal.
+  //  - From Pre-reveal: retreat to previous player's Pre-reveal.
+  //  - Hidden on any player: shows Back.
+  //  - Pre-reveal on Player 1: NO Back (no previous to retreat to).
+  //  - Pre-reveal on Player 2+: shows Back (cross-player retreat).
+  //  - Revealed: NO Back. Body tap to hide is the existing "back out" path.
+  // Spec note: this departs from §5 "forward-only across players." That
+  // rule is loosened to "forward-only by default, with explicit Back as
+  // an escape hatch. Information-leak prevention is now trust-based."
+  const handleBack = () => {
+    if (state === "hidden") {
+      setState("pre");
+    } else if (state === "pre" && !isFirst) {
+      retreatReveal();
+      navigate(`/reveal/${idx - 1}`);
+      // The route-param-change effect will reset local state to "pre" on
+      // the previous player. That's exactly what we want.
+    }
+  };
+
+  const showBack =
+    state === "hidden" || (state === "pre" && !isFirst);
+
   return (
-    <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col px-4 py-6 pb-28 max-w-md mx-auto">
       <div className="flex items-center mb-8">
-        <span className="text-sm text-gray-500">
+        {showBack ? (
+          <button
+            onClick={handleBack}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium active:scale-[0.98] transition"
+          >
+            ← Back
+          </button>
+        ) : null}
+
+        <span
+          className={`text-sm text-gray-500 ${showBack ? "ml-3" : ""}`}
+        >
           Player {idx + 1} of {playerOrder.length}
         </span>
+
         <div className="ml-auto">
           <SettingsGear onClick={() => setSettingsOpen(true)} />
         </div>
@@ -165,12 +203,19 @@ export default function Reveal() {
       </div>
 
       {state === "hidden" && (
-        <button
-          onClick={handleNext}
-          className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+        <div
+          className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-6 bg-white border-t border-gray-100"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
         >
-          {isLast ? "Start voting" : "Next"}
-        </button>
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={handleNext}
+              className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+            >
+              {isLast ? "Start voting" : "Next"}
+            </button>
+          </div>
+        </div>
       )}
 
       <SettingsModal

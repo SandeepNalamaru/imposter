@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useGameStore } from "../store/gameStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { sizingFor, type ListSizing } from "../lib/sizing";
 
 export default function Reorder() {
   const navigate = useNavigate();
@@ -97,16 +98,21 @@ export default function Reorder() {
 
   if (!category || players.length === 0) return null;
 
+  const sizing = sizingFor(players.length);
+
   return (
-    <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col px-4 py-6 pb-28 max-w-md mx-auto">
       <div className="flex items-center mb-6">
-        <Link to="/names" className="text-blue-600">
+        <Link
+          to="/names"
+          className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium active:scale-[0.98] transition"
+        >
           ← Back
         </Link>
       </div>
 
-      <h2 className="text-xl font-bold mb-1">Pass order</h2>
-      <p className="text-sm text-gray-500 mb-4">
+      <h2 className="text-2xl font-bold mb-1">Pass order</h2>
+      <p className="text-base text-gray-500 mb-4">
         Drag to change. This is the order you'll pass the phone.
       </p>
 
@@ -119,25 +125,33 @@ export default function Reorder() {
           items={orderedIds}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-col gap-2">
+          <div className={`flex flex-col ${sizing.gapClass}`}>
             {orderedPlayers.map((player, i) => (
               <SortableRow
                 key={player.id}
                 id={player.id}
                 position={i + 1}
                 name={player.name}
+                sizing={sizing}
               />
             ))}
           </div>
         </SortableContext>
       </DndContext>
 
-      <button
-        onClick={handleStartGame}
-        className="mt-auto w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+      <div
+        className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-6 bg-white border-t border-gray-100"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
       >
-        Start game
-      </button>
+        <div className="max-w-md mx-auto">
+          <button
+            onClick={handleStartGame}
+            className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+          >
+            Start game
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -146,9 +160,10 @@ interface SortableRowProps {
   id: string;
   position: number;
   name: string;
+  sizing: ListSizing;
 }
 
-function SortableRow({ id, position, name }: SortableRowProps) {
+function SortableRow({ id, position, name, sizing }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -171,19 +186,19 @@ function SortableRow({ id, position, name }: SortableRowProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg"
+      className={`flex items-center gap-3 px-4 ${sizing.rowClass} bg-white border border-gray-300 rounded-lg`}
     >
-      <span className="text-gray-400 font-medium w-6 tabular-nums">
+      <span className={`text-gray-400 font-medium w-6 tabular-nums ${sizing.textClass}`}>
         {position}
       </span>
-      <span className="flex-1 font-medium">{name}</span>
+      <span className={`flex-1 font-medium ${sizing.textClass}`}>{name}</span>
       {/* Drag handle. touchAction: none here, not on the whole row, so
           tapping elsewhere on the row still allows page scroll. */}
       <button
         {...attributes}
         {...listeners}
         style={{ touchAction: "none", cursor: "grab" }}
-        className="text-gray-400 px-2 py-1 text-xl select-none"
+        className="text-gray-400 px-2 py-1 text-2xl select-none"
         aria-label={`Reorder ${name}`}
       >
         ⋮⋮

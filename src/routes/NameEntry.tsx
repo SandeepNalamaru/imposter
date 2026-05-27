@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { sizingFor } from "../lib/sizing";
 import type { Player } from "../types";
 
 const MAX_NAME_LENGTH = 20;
@@ -51,6 +52,12 @@ export default function NameEntry() {
 
   const [showValidationError, setShowValidationError] = useState<string | null>(null);
 
+  // Refs array for Enter-to-next focus chaining. Resized as playerCount changes.
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  useEffect(() => {
+    inputRefs.current = inputRefs.current.slice(0, playerCount);
+  }, [playerCount]);
+
   // Validation. Returns the first issue (for tap-on-disabled-Next feedback),
   // or null if everything's good.
   const validationError = useMemo((): string | null => {
@@ -87,6 +94,29 @@ export default function NameEntry() {
     if (showValidationError) setShowValidationError(null);
   };
 
+  // Enter key behavior: advance to next input. On the last input, blur to
+  // dismiss the keyboard (user reviews list, then taps Next themselves).
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number,
+  ) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const nextInput = inputRefs.current[index + 1];
+    if (nextInput) {
+      nextInput.focus();
+    } else {
+      e.currentTarget.blur();
+    }
+  };
+
+  // Scroll the focused row into view so the on-screen keyboard doesn't
+  // hide it. block:"center" keeps the row comfortably above the keyboard
+  // on most phones at N=12.
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+
   const handleClearAll = () => {
     setNames(Array(playerCount).fill(""));
     setShowValidationError(null);
@@ -113,16 +143,21 @@ export default function NameEntry() {
     navigate("/reorder");
   };
 
+  const sizing = sizingFor(playerCount);
+
   return (
-    <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col px-4 py-6 pb-28 max-w-md mx-auto">
       <div className="flex items-center mb-6">
-        <Link to="/setup" className="text-blue-600">
+        <Link
+          to="/setup"
+          className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium active:scale-[0.98] transition"
+        >
           ← Back
         </Link>
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Who's playing?</h2>
+        <h2 className="text-2xl font-bold">Who's playing?</h2>
         <button
           onClick={handleClearAll}
           className="text-sm text-gray-500 underline"
@@ -131,18 +166,23 @@ export default function NameEntry() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className={`flex flex-col ${sizing.gapClass}`}>
         {names.map((name, i) => (
           <input
             key={rowId(i)}
+            ref={(el) => {
+              inputRefs.current[i] = el;
+            }}
             type="text"
             inputMode="text"
-            enterKeyHint="next"
+            enterKeyHint={i === playerCount - 1 ? "done" : "next"}
             maxLength={MAX_NAME_LENGTH}
             placeholder={`Player ${i + 1}`}
             value={name}
             onChange={(e) => handleChange(i, e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base"
+            onKeyDown={(e) => handleKeyDown(e, i)}
+            onFocus={handleFocus}
+            className={`w-full px-4 text-center ${sizing.rowClass} ${sizing.textClass} border border-gray-300 rounded-lg`}
           />
         ))}
       </div>
@@ -153,13 +193,20 @@ export default function NameEntry() {
         </p>
       )}
 
-      <button
-        onClick={handleNext}
-        disabled={!!validationError}
-        className="mt-auto w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium disabled:opacity-40 active:scale-[0.98] transition"
+      <div
+        className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-6 bg-white border-t border-gray-100"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
       >
-        Next
-      </button>
+        <div className="max-w-md mx-auto">
+          <button
+            onClick={handleNext}
+            disabled={!!validationError}
+            className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium disabled:opacity-40 active:scale-[0.98] transition"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

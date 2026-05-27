@@ -32,9 +32,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
-      <div className="flex items-center mb-6">
+      <div className="relative flex items-center justify-center mb-6">
         <h1 className="text-2xl font-bold">Imposter</h1>
-        <div className="ml-auto">
+        <div className="absolute right-0">
           <SettingsGear onClick={() => navigate("/settings")} />
         </div>
       </div>

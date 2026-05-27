@@ -50,9 +50,12 @@ export default function GameSetup() {
   if (!category) return null;
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-6 max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col px-4 py-6 pb-28 max-w-md mx-auto">
       <div className="flex items-center mb-6">
-        <Link to="/" className="text-blue-600">
+        <Link
+          to="/"
+          className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium active:scale-[0.98] transition"
+        >
           ← Back
         </Link>
         <span className="ml-auto px-3 py-1 rounded-full bg-gray-100 text-sm">
@@ -60,7 +63,7 @@ export default function GameSetup() {
         </span>
       </div>
 
-      <div className="flex flex-col gap-8 mt-4">
+      <div className="flex flex-col gap-12 mt-8">
         <Stepper
           label="Players"
           value={playerCount}
@@ -79,18 +82,25 @@ export default function GameSetup() {
             canIncrement={imposterCount < cap}
             canDecrement={imposterCount > MIN_IMPOSTERS}
           />
-          <p className="text-sm text-gray-500 mt-2 text-center">
+          <p className="text-base text-gray-500 mt-4 text-center">
             Max {cap} for {playerCount} players
           </p>
         </div>
       </div>
 
-      <button
-        onClick={() => navigate("/names")}
-        className="mt-auto w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+      <div
+        className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-6 bg-white border-t border-gray-100"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
       >
-        Next
-      </button>
+        <div className="max-w-md mx-auto">
+          <button
+            onClick={() => navigate("/names")}
+            className="w-full py-4 bg-blue-600 text-white rounded-lg text-lg font-medium active:scale-[0.98] transition"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -114,22 +124,22 @@ function Stepper({
 }: StepperProps) {
   return (
     <div>
-      <div className="text-center text-gray-600 mb-3">{label}</div>
-      <div className="flex items-center justify-center gap-6">
+      <div className="text-center text-gray-600 text-lg mb-4">{label}</div>
+      <div className="flex items-center justify-center gap-8">
         <button
           onClick={onDecrement}
           disabled={!canDecrement}
-          className="w-12 h-12 rounded-full bg-gray-200 text-2xl disabled:opacity-30 active:scale-95 transition"
+          className="w-16 h-16 rounded-full bg-gray-200 text-3xl disabled:opacity-30 active:scale-95 transition"
         >
           −
         </button>
-        <span className="text-4xl font-bold w-12 text-center tabular-nums">
+        <span className="text-6xl font-bold w-20 text-center tabular-nums">
           {value}
         </span>
         <button
           onClick={onIncrement}
           disabled={!canIncrement}
-          className="w-12 h-12 rounded-full bg-gray-200 text-2xl disabled:opacity-30 active:scale-95 transition"
+          className="w-16 h-16 rounded-full bg-gray-200 text-3xl disabled:opacity-30 active:scale-95 transition"
         >
           +
         </button>
