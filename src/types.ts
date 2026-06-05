@@ -4,9 +4,10 @@ export type CategoryName =
   | "Generic"
   | "Animals"
   | "Food & Drink"
-  | "History & Famous People"
+  | "Famous People"
   | "Places & Travel"
-  | "Spicy";
+  | "Spicy"
+  | "Tech";
 
 // "random" is a runtime selector, not a stored category. Tracked here as a
 // separate string so the game-setup flow can carry it through without us

@@ -8,14 +8,14 @@ interface CategoryCard {
   label: string;
   variant: "default" | "spicy" | "random";
 }
-
 const CATEGORY_CARDS: CategoryCard[] = [
   { key: "Generic", label: "Generic", variant: "default" },
   { key: "Animals", label: "Animals", variant: "default" },
   { key: "Food & Drink", label: "Food & Drink", variant: "default" },
-  { key: "History & Famous People", label: "History & Famous People", variant: "default" },
+  { key: "Famous People", label: "Famous People", variant: "default" },
   { key: "Places & Travel", label: "Places & Travel", variant: "default" },
   { key: "Spicy", label: "Spicy 🌶️", variant: "spicy" },
+  { key: "Tech", label: "Tech", variant: "default" },
   { key: "random", label: "Random", variant: "random" },
 ];
 
